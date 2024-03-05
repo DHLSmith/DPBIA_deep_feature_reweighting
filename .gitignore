@@ -1,2 +1,5 @@
 
 *.pyc
+/RSLTS/
+/RSLTS_DFR/
+/CKPT_DFR/
