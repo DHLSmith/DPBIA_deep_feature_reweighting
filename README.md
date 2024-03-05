@@ -78,6 +78,29 @@ python3 train_classifier.py --output_dir=<OUTPUT_DIR> --pretrained_model \
   --eval_freq=1 --data_dir=<CELEBA_DIR> --test_wb_dir=<CELEBA_DIR> \
   --augment_data --seed=<SEED>
 ```
+```bash
+#Damian's note: 
+# To get the CUDA enabled pytorch, install it like this:
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# For train_classifier.py, use:  
+--output_dir=RSLTS --pretrained_model --num_epochs=100 --weight_decay=1e-3 \
+--batch_size=32 --init_lr=1e-3 --eval_freq=1 \
+--data_dir=data\waterbird_complete95_forest2water2 \
+--test_wb_dir=data\waterbird_complete95_forest2water2 --augment_data --seed=42 
+
+# This will run using the locally downloaded waterbirds repo and put the logging and output into RSLTS folder
+# Be careful - this will overwrite previous work, so we may want to find a way to timestamp this
+
+# For DFR (last layer) dfr_evaluate_spurious.py
+--data_dir=data\waterbird_complete95_forest2water2  --result_path=RSLT_DFR\results.pkl \
+--ckpt_path=CKPT_DFR\3-epoch-waterbirds.pt   \
+--tune_class_weights_dfr_train
+
+# This requires manually copying the trained .pt file from the training RSLTS folder 
+# to the CKPT_DFR folder. It will produce a pickle file in the RSLT_DFR folder which must already exist
+
+```
 
 Here `OUTPUT_DIR` is a path to the folder where the logs will be stored,
 `WATERBIRDS_DIR` and `CELEBA_DIR` are the directories containing waterbirds
