@@ -77,6 +77,8 @@ if __name__ == '__main__':
     args.output_dir += date_time
     print('Preparing directory %s' % args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
+    print(torch.zeros(1).cuda())
+
     with open(os.path.join(args.output_dir, 'command.sh'), 'w') as f:
         f.write(' '.join(sys.argv))
         f.write('\n')
