@@ -20,6 +20,7 @@ from sklearn.preprocessing import StandardScaler
 from wb_data import WaterBirdsDataset, get_loader, get_transform_cub, log_data
 from utils import Logger, AverageMeter, set_seed, evaluate, get_y_p
 
+from datetime import datetime
 
 if __name__ == '__main__':
     # WaterBirds
@@ -41,9 +42,6 @@ if __name__ == '__main__':
         default=None,
         help="Train dataset directory")
     parser.add_argument(
-        "--result_path", type=str, default="logs/",
-        help="Path to save results")
-    parser.add_argument(
         "--ckpt_path", type=str, default=None, help="Checkpoint path")
     parser.add_argument(
         "--batch_size", type=int, default=100, required=False,
@@ -57,8 +55,16 @@ if __name__ == '__main__':
     parser.add_argument(
         "--tune_class_weights_dfr_train", action='store_true',
         help="Learn class weights for DFR(Train)")
+    parser.add_argument(
+        "--output_dir", type=str,
+        default="logs",
+        help="Output directory")
     args = parser.parse_args()
 
+    date_time = datetime.now().strftime("_%Y-%m-%d_%H%M%S")
+    args.output_dir += date_time
+    print('Preparing directory %s' % args.output_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     def dfr_on_validation_tune(
             all_embeddings, all_y, all_g, preprocess=True,
@@ -431,5 +437,5 @@ if __name__ == '__main__':
     all_results["dfr_train_results"] = dfr_train_results
     print(all_results)
 
-    with open(args.result_path, 'wb') as f:
+    with open(os.path.join(args.output_dir, 'results.pkl'), 'wb') as f:
         pickle.dump(all_results, f)

@@ -93,12 +93,12 @@ pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu11
 # Be careful - this will overwrite previous work, so we may want to find a way to timestamp this
 
 # For DFR (last layer) dfr_evaluate_spurious.py
---data_dir=data\waterbird_complete95_forest2water2  --result_path=RSLT_DFR\results.pkl \
+--data_dir=data\waterbird_complete95_forest2water2  --output_dir=RSLT_DFR \
 --ckpt_path=CKPT_DFR\3-epoch-waterbirds.pt   \
 --tune_class_weights_dfr_train
 
-# This requires manually copying the trained .pt file from the training RSLTS folder 
-# to the CKPT_DFR folder. It will produce a pickle file in the RSLT_DFR folder which must already exist
+# This requires manually copying the trained .pt file from the training RSLTS folder (or pointing to where it is!)
+# to the CKPT_DFR folder. It will produce a pickle file in the RSLT_DFR folder which will be created if needed.
 
 ```
 
@@ -136,17 +136,17 @@ following commands.
 
 ```bash
 python3 dfr_evaluate_spurious.py --data_dir=<DATA_DIR> \
-  --result_path=<RESULT_PATH.pkl> --ckpt_path=<CKPT_PATH> \
+  --output_dir=<PKL_FOLDER> --ckpt_path=<CKPT_PATH> \
   --tune_class_weights_dfr_train
 ```
 
 Here `DATA_DIR` is the directory containing Waterbirds or CelebA data,
-`RESULT_PATH` is the path where a pickle dump of the results will be saved,
+`PKL_FOLDER` is the path where a pickle dump of the results will be saved as results.pkl,
 and `CKPT_PATH` is the checkpoint path.
 For DFR_{TR-NM}^{TR} do not use the `--tune_class_weights_dfr_train` flag, if you do not
 want to tune the class weights.
 
-The script will output the results to console and save them to `RESULT_PATH`.
+The script will output the results to console and save them to `PKL_FOLDER`.
 
 ## ImageNet experiments
 

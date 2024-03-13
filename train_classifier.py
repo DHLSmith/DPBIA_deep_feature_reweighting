@@ -17,6 +17,8 @@ from utils import MultiTaskHead
 from utils import Logger, AverageMeter, set_seed, evaluate, get_y_p
 from utils import update_dict, get_results, write_dict_to_tb
 
+from datetime import datetime
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train model on waterbirds data")
     parser.add_argument(
@@ -37,7 +39,7 @@ if __name__ == '__main__':
         help="Test data directory, places")
     parser.add_argument(
         "--output_dir", type=str,
-        default="logs/",
+        default="logs",
         help="Output directory")
 
     parser.add_argument("--pretrained_model", action='store_true', help="Use pretrained model")
@@ -71,6 +73,8 @@ if __name__ == '__main__':
     assert args.reweight_groups + args.reweight_classes <= 1
     assert args.multitask + args.predict_place <= 1
 
+    date_time = datetime.now().strftime("_%Y-%m-%d_%H%M%S")
+    args.output_dir += date_time
     print('Preparing directory %s' % args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, 'command.sh'), 'w') as f:
