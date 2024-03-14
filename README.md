@@ -65,6 +65,11 @@ and aligned FG-Only, BG-Only and Original Waterbirds splits in
 ### Base models
 
 To train base models on CelebA and Waterbirds, use the following commands.
+Damian Notes: These values match Section 6 of the paper, **NOT** Section 4. 
+
+The paper does not say what SEED was used. 
+
+momentum_decay defaults to 0.9
 ```bash
 # Waterbirds
 python3 train_classifier.py --output_dir=<OUTPUT_DIR> --pretrained_model \
@@ -113,7 +118,7 @@ following commands.
 python3 train_classifier.py ---output_dir=<OUTPUT_DIR> --pretrained_model \
   --num_epochs=100 --weight_decay=1e-3 --batch_size=32 --init_lr=1e-3 \
   --eval_freq=1 --data_dir=<WATERBIRDS_DIR> --test_wb_dir=<WATERBIRDS_DIR> \
-  --augment_data --seed=<SEED> num_minority_groups_remove=2
+  --augment_data --seed=<SEED> --num_minority_groups_remove=2
 
 # CelebA
 python3 train_classifier.py --output_dir=<OUTPUT_DIR> --pretrained_model \

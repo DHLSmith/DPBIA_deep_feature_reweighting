@@ -20,6 +20,8 @@ from utils import update_dict, get_results, write_dict_to_tb
 from datetime import datetime
 
 if __name__ == '__main__':
+
+    # Argument parsing
     parser = argparse.ArgumentParser(description="Train model on waterbirds data")
     parser.add_argument(
         "--data_dir", type=str,
@@ -41,7 +43,6 @@ if __name__ == '__main__':
         "--output_dir", type=str,
         default="logs",
         help="Output directory")
-
     parser.add_argument("--pretrained_model", action='store_true', help="Use pretrained model")
     parser.add_argument("--reweight_classes", action='store_true', help="Reweight classes")
     parser.add_argument("--reweight_places", action='store_true', help="Reweight based on place")
@@ -57,46 +58,49 @@ if __name__ == '__main__':
     parser.add_argument("--seed", type=int, default=1)
 
     # Target
-    parser.add_argument("--multitask", action='store_true', help="Predict label and group")
-    parser.add_argument("--predict_place", action='store_true', help="Predict label and group")
+    # FIXME looking at the code, I am not sure that multitask, predict_place, or test_grey_dir will work properly.
+    parser.add_argument("--multitask", action='store_true', help="Predict label and group - Cannot Use with --predict_place")
+    parser.add_argument("--predict_place", action='store_true', help="Predict places - Cannot Use with --multitask")
 
-    #Understanding exps
-    # parser.add_argument("--no_minority_groups", action='store_true',
-    #                     help="Remove all minority group examples from the train data")
-    parser.add_argument("--num_minority_groups_remove", type=int, required=False, default=0)
-
+    # Understanding exps
+    parser.add_argument("--num_minority_groups_remove", type=int, required=False, default=0,
+                        help="Number of minority groups to remove")
     parser.add_argument("--resume", type=str, default=None)
-
 
     args = parser.parse_args()
 
+    # Avoid mutually exclusive arguments
     assert args.reweight_groups + args.reweight_classes <= 1
     assert args.multitask + args.predict_place <= 1
 
+    # Damian added - this should print a line containing cuda:0 if the GPU is being used
+    print(torch.zeros(1).cuda())
+
+    # Damian Added: This will append a timestamp to results folder so that we don't overwrite, and to help keep track
     date_time = datetime.now().strftime("_%Y-%m-%d_%H%M%S")
     args.output_dir += date_time
     print('Preparing directory %s' % args.output_dir)
-    os.makedirs(args.output_dir, exist_ok=True)
-    print(torch.zeros(1).cuda())
 
+    # make output folder and begin logging
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    # record how the command was run.
     with open(os.path.join(args.output_dir, 'command.sh'), 'w') as f:
         f.write(' '.join(sys.argv))
         f.write('\n')
-
     with open(os.path.join(args.output_dir, 'args.json'), 'w') as f:
         args_json = json.dumps(vars(args))
         f.write(args_json)
-
-    set_seed(args.seed)
-
     writer = SummaryWriter(log_dir=args.output_dir)
     logger = Logger(os.path.join(args.output_dir, 'log.txt'))
+
+    set_seed(args.seed)
 
     splits = ["train", "test", "val"]
     basedir = args.data_dir
 
     # Data
-    target_resolution = (224, 224)
+    target_resolution = (224, 224)  # Caution - these values for image size are hardcoded in several files
     train_transform = get_transform_cub(target_resolution=target_resolution, train=True, augment_data=args.augment_data)
     test_transform = get_transform_cub(target_resolution=target_resolution, train=False, augment_data=args.augment_data)
 
@@ -106,8 +110,10 @@ if __name__ == '__main__':
         'wb_val': WaterBirdsDataset(basedir=args.test_wb_dir, split="val", transform=test_transform),
     }
 
+    # TODO looks like predict_place and test_grey_dir should be exlcusive
     if not args.predict_place and not (args.test_grey_dir is None):
         testset_dict['grey'] = WaterBirdsDataset(basedir=args.test_grey_dir, split="test", transform=test_transform)
+    # FIXME --multitask should make places be predited, but does not check the test_places_dir has been configured
     if ((args.predict_place) and not (args.test_places_dir is None)) or args.multitask:
         testset_dict['places'] = WaterBirdsDataset(basedir=args.test_places_dir, split="test", transform=test_transform)
 
@@ -149,10 +155,10 @@ if __name__ == '__main__':
     n_classes = trainset.n_classes
     model = torchvision.models.resnet50(pretrained=args.pretrained_model)
     d = model.fc.in_features
-    if not args.multitask:
+    if not args.multitask:  # Just predict classes
         model.fc = torch.nn.Linear(d, n_classes)
     else:
-        model.fc = MultiTaskHead(d, [n_classes, trainset.n_places])
+        model.fc = MultiTaskHead(d, [n_classes, trainset.n_places])  # predict classes and places
 
     # TODO: fix resuming from a checkpoint
     if args.resume is not None:
@@ -178,8 +184,9 @@ if __name__ == '__main__':
     for epoch in range(args.num_epochs):
         model.train()
         loss_meter = AverageMeter()
-        acc_groups = {g_idx : AverageMeter() for g_idx in range(trainset.n_groups)}
+        acc_groups = {g_idx: AverageMeter() for g_idx in range(trainset.n_groups)}
         if args.multitask:
+            # TODO check this - looks like behaviour for multitask that should be for predict_places, too
             acc_place_groups = {g_idx: AverageMeter() for g_idx in range(trainset.n_groups)}
 
         for batch in tqdm.tqdm(train_loader):
@@ -248,4 +255,3 @@ if __name__ == '__main__':
         logger.write('\n')
 
     torch.save(model.state_dict(), os.path.join(args.output_dir, 'final_checkpoint.pt'))
-
