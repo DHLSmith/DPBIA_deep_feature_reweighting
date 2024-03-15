@@ -91,7 +91,7 @@ if __name__ == '__main__':
     with open(os.path.join(args.output_dir, 'args.json'), 'w') as f:
         args_json = json.dumps(vars(args))
         f.write(args_json)
-    writer = SummaryWriter(log_dir=args.output_dir)
+    writer = SummaryWriter(log_dir=args.output_dir)  # TODO unclear what this does, if anything!
     logger = Logger(os.path.join(args.output_dir, 'log.txt'))
 
     set_seed(args.seed)
@@ -101,23 +101,29 @@ if __name__ == '__main__':
 
     # Data
     target_resolution = (224, 224)  # Caution - these values for image size are hardcoded in several files
+    # Even when not augmenting, the images will be scaled by 256/244 then centercrop().
+    # This scaling seems to be the mean of the range of scaling applied to the augmented images
     train_transform = get_transform_cub(target_resolution=target_resolution, train=True, augment_data=args.augment_data)
+    # NOTE: although augment_data is set, because train is False, augmentation will NOT be applied
     test_transform = get_transform_cub(target_resolution=target_resolution, train=False, augment_data=args.augment_data)
 
+    # NOTE this uses wb = waterbirds nomenclature but the instructions say we can use it for
+    # celebs as well. Just remember that wb means test images, wb_val = validation
     trainset = WaterBirdsDataset(basedir=basedir, split="train", transform=train_transform)
     testset_dict = {
         'wb': WaterBirdsDataset(basedir=args.test_wb_dir, split="test", transform=test_transform),
         'wb_val': WaterBirdsDataset(basedir=args.test_wb_dir, split="val", transform=test_transform),
     }
 
-    # TODO looks like predict_place and test_grey_dir should be exlcusive
+    # TODO looks like predict_place and test_grey_dir should be exclusive
+    # For section 6, we don't use these branches
     if not args.predict_place and not (args.test_grey_dir is None):
         testset_dict['grey'] = WaterBirdsDataset(basedir=args.test_grey_dir, split="test", transform=test_transform)
-    # FIXME --multitask should make places be predited, but does not check the test_places_dir has been configured
+    # FIXME --multitask should make places be predicted, but does not check the test_places_dir has been configured
     if ((args.predict_place) and not (args.test_places_dir is None)) or args.multitask:
         testset_dict['places'] = WaterBirdsDataset(basedir=args.test_places_dir, split="test", transform=test_transform)
 
-    if args.num_minority_groups_remove > 0:
+    if args.num_minority_groups_remove > 0:  # NOT used for section 6
         print("Removing minority groups")
         print("Initial groups", np.bincount(trainset.group_array))
         group_counts = trainset.group_counts
@@ -149,14 +155,14 @@ if __name__ == '__main__':
     #   testset, train=False, reweight_groups=None, reweight_classes=None, **loader_kwargs)
 
     get_yp_func = partial(get_y_p, n_places=trainset.n_places)
-    log_data(logger, trainset, testset_dict['wb'], get_yp_func=get_yp_func)
+    log_data(logger, trainset, testset_dict['wb'], val_data=testset_dict['wb_val'], get_yp_func=get_yp_func)
 
     # Model
-    n_classes = trainset.n_classes
+    n_classes = trainset.n_classes  # 2 classes to predict
     model = torchvision.models.resnet50(pretrained=args.pretrained_model)
-    d = model.fc.in_features
+    d = model.fc.in_features  # 2048 features into fc layer
     if not args.multitask:  # Just predict classes
-        model.fc = torch.nn.Linear(d, n_classes)
+        model.fc = torch.nn.Linear(d, n_classes)  # Specify new FC layer
     else:
         model.fc = MultiTaskHead(d, [n_classes, trainset.n_places])  # predict classes and places
 
@@ -170,6 +176,7 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.SGD(
         model.parameters(), lr=args.init_lr, momentum=args.momentum_decay, weight_decay=args.weight_decay)
+    # For Section 6 we don't use the scheduler
     if args.scheduler:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=args.num_epochs)
@@ -178,7 +185,7 @@ if __name__ == '__main__':
 
     criterion = torch.nn.CrossEntropyLoss()
 
-    logger.flush()
+    logger.flush()  # write what we have to the logger before training begins
 
     # Train loop
     for epoch in range(args.num_epochs):
@@ -190,6 +197,7 @@ if __name__ == '__main__':
             acc_place_groups = {g_idx: AverageMeter() for g_idx in range(trainset.n_groups)}
 
         for batch in tqdm.tqdm(train_loader):
+            # x is input data, y is targets {0,1}, g is groups {0,1,2,3} TODO what is p (places? or mismatch?)
             x, y, g, p = batch
             x, y, p = x.cuda(), y.cuda(), p.cuda()
             if args.predict_place:
@@ -197,7 +205,7 @@ if __name__ == '__main__':
 
             optimizer.zero_grad()
             logits = model(x)
-            if args.multitask:
+            if args.multitask:  # predicting groups and places
                 logits, logits_place = logits
                 loss = criterion(logits, y) + criterion(logits_place, p)
                 update_dict(acc_place_groups, p, g, logits_place)
@@ -211,8 +219,9 @@ if __name__ == '__main__':
 
         if args.scheduler:
             scheduler.step()
+
         logger.write(f"Epoch {epoch}\t Loss: {loss_meter.avg}\n")
-        results = get_results(acc_groups, get_yp_func)
+        results = get_results(acc_groups, get_yp_func)  # TODO not clear what this does. However, it produces accuracy for each of the 4 groups, then a mean and worst accuracy
         logger.write(f"Train results \n")
         logger.write(str(results) + "\n")
         tag = "places_" if args.predict_place else ""
@@ -231,23 +240,26 @@ if __name__ == '__main__':
             images, nrow=2, padding=2, pad_value=1.)
         writer.add_image("data/", images_concat, epoch)
 
+        # Do some testing/evaluation
         if epoch % args.eval_freq == 0:
             # Iterating over datasets we test on
+            # Not necessarily every epoch - controlled by eval_freq
             for test_name, test_loader in test_loader_dict.items():
-                results = evaluate(model, test_loader, get_yp_func, args.multitask, args.predict_place)
-                if args.multitask and test_name == "wb":
+                results = evaluate(model, test_loader, get_yp_func, args.multitask, args.predict_place)  # TODO understand evaluate function
+                if args.multitask and test_name == "wb":  # Test dataset (not val)
                     results, results_places = results
                     write_dict_to_tb(writer, results_places, "test_wb_places/", epoch)
-                    logger.write("Test results \n")
-                    logger.write(str(results))
-                elif args.multitask:
+                    logger.write("Test results multitask,wb\n")
+                    logger.write(str(results) + "\n")  # DS Added line break for clarity
+                elif args.multitask:  # test_name must be "wb_val" I think
                     results, _ = results
                 tag = test_name
                 if test_name == "wb":
                     tag = "wb_birds" if not args.predict_place else "wb_places"
                 write_dict_to_tb(writer, results, "test_{}/".format(tag), epoch)
-                logger.write("Test results \n")
-                logger.write(str(results))
+                # FIXME This will log "test results\n..." twice, once for test results, once for validation
+                logger.write(f"Test results {test_name}\n")
+                logger.write(str(results) + "\n")  # DS added line break for clarity
 
             torch.save(
                 model.state_dict(), os.path.join(args.output_dir, 'tmp_checkpoint.pt'))
