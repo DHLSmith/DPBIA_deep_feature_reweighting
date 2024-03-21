@@ -97,6 +97,8 @@ def get_results(acc_groups, get_yp_func):
     }
     all_correct = sum([acc_groups[g].sum for g in groups])
     all_total = sum([acc_groups[g].count for g in groups])
+    # The paper says they "weight the group accuracies according to their prevalence in the training data."
+    # I think that's what this is doing.
     results.update({"mean_accuracy" : all_correct / all_total})
     results.update({"worst_accuracy" : min(results.values())})
     return results

@@ -115,7 +115,7 @@ To train base models without minority groups (for DFR_{TR-NM}^{TR}), use the
 following commands.
 ```bash
 # Waterbirds
-python3 train_classifier.py ---output_dir=<OUTPUT_DIR> --pretrained_model \
+python3 train_classifier.py --output_dir=<OUTPUT_DIR> --pretrained_model \
   --num_epochs=100 --weight_decay=1e-3 --batch_size=32 --init_lr=1e-3 \
   --eval_freq=1 --data_dir=<WATERBIRDS_DIR> --test_wb_dir=<WATERBIRDS_DIR> \
   --augment_data --seed=<SEED> --num_minority_groups_remove=2

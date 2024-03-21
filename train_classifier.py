@@ -124,8 +124,11 @@ if __name__ == '__main__':
         testset_dict['places'] = WaterBirdsDataset(basedir=args.test_places_dir, split="test", transform=test_transform)
 
     if args.num_minority_groups_remove > 0:  # NOT used for section 6
+        # DS added logger.write so that the removal of groups gets into the logfile
         print("Removing minority groups")
+        logger.write("Removing minority groups\n")
         print("Initial groups", np.bincount(trainset.group_array))
+        logger.write(f"Initial groups {np.bincount(trainset.group_array)}\n")
         group_counts = trainset.group_counts
         minority_groups = np.argsort(group_counts.numpy())[:args.num_minority_groups_remove]
         minority_groups
@@ -137,6 +140,7 @@ if __name__ == '__main__':
         trainset.filename_array = trainset.filename_array[idx]
         trainset.metadata_df = trainset.metadata_df.iloc[idx]
         print("Final groups", np.bincount(trainset.group_array))
+        logger.write(f"Final groups {np.bincount(trainset.group_array)}\n")
 
     # testset = WaterBirdsDataset(basedir=basedir, split="test", transform=test_transform)
     # valset = WaterBirdsDataset(basedir=basedir, split="val", transform=test_transform)
