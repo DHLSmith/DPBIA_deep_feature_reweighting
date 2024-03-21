@@ -158,7 +158,21 @@ if __name__ == '__main__':
     def dfr_on_validation_eval(
             c, w1, w2, all_embeddings, all_y, all_g, num_retrains=20,
             preprocess=True, balance_val=False, add_train=True):
-        coefs, intercepts = [], []
+            #Ajayesh adds- 
+            #this function is doing last layer retraining on valdation data and evaluating it on test data and returns accuracy on test and train data and mean accuracy on test data
+
+            #input:- c,w1,w2 hyperparameters we got from dfr_on_validation_tune
+            #        all_embeddings:embeddings extracted from feature extracter of resnet50 bascically input to last layer
+            #        all_y:class labels for ex 0 for landbird and 1 for waterbird
+            #        all_g: group label ex landbird on land or waterbird on land and so on(calculated in wb_data.py)
+            #        preprocess: flag for weather to standardize embedding to have zero mean and unit standard deviation
+            #        balance_val: flag for weather to balance validation data ie to take all of the minority group and take the same size
+            #        from other groups and combining them.
+            #        add_train: flag for weather to use training data as well (we also tune for class weights in this case)
+            #        num_retrain: how many time we retrain last layer
+            #output:-accuracy and mean accuracy
+        coefs, intercepts = [], [] # to save coefficents and bias terms during iterations
+        #preprocessing training data
         if preprocess:
             scaler = StandardScaler()
             scaler.fit(all_embeddings["train"])
@@ -193,13 +207,13 @@ if __name__ == '__main__':
             logreg = LogisticRegression(penalty=REG, C=c, solver="liblinear",
                                         class_weight={0: w1, 1: w2})
             logreg.fit(x_train, y_train)
-            coefs.append(logreg.coef_)
-            intercepts.append(logreg.intercept_)
+            coefs.append(logreg.coef_) #save coefficents to use on logistic regression on test data
+            intercepts.append(logreg.intercept_) # save bias terms
 
         x_test = all_embeddings["test"]
         y_test = all_y["test"]
         g_test = all_g["test"]
-        print(np.bincount(g_test))
+        print(np.bincount(g_test)) #no of data points in each group
 
         if preprocess:
             x_test = scaler.transform(x_test)
@@ -208,8 +222,8 @@ if __name__ == '__main__':
         n_classes = np.max(y_train) + 1
         # the fit is only needed to set up logreg
         logreg.fit(x_train[:n_classes], np.arange(n_classes))
-        logreg.coef_ = np.mean(coefs, axis=0)
-        logreg.intercept_ = np.mean(intercepts, axis=0)
+        logreg.coef_ = np.mean(coefs, axis=0) #using mean of coefficents we got multiple iteration in last layer retraining
+        logreg.intercept_ = np.mean(intercepts, axis=0) # same with bias term
         preds_test = logreg.predict(x_test)
         preds_train = logreg.predict(x_train)
         n_groups = np.max(g_train) + 1
@@ -220,7 +234,7 @@ if __name__ == '__main__':
                       for g in range(n_groups)]
         return test_accs, test_mean_acc, train_accs
 
-
+        #these both are doing hyper parameter tunning and evaluation with trainning data these make add_train flag in previous function redundent
     def dfr_train_subset_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             learn_class_weights=False):
@@ -370,6 +384,7 @@ if __name__ == '__main__':
     model.eval()
 
     # Evaluate model
+    #evaluation on base model(ERM)
     print("Base Model")
     base_model_results = {}
     get_yp_func = partial(get_y_p, n_places=trainset.n_places)
@@ -397,7 +412,7 @@ if __name__ == '__main__':
         x = torch.flatten(x, 1)
         return x
 
-
+    #processing embedding 
     all_embeddings = {}
     all_y, all_p, all_g = {}, {}, {}
     for name, loader in [("train", train_loader), ("test", test_loader), ("val", val_loader)]:
