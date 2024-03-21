@@ -69,14 +69,28 @@ if __name__ == '__main__':
     def dfr_on_validation_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             balance_val=False, add_train=True, num_retrains=1):
+            #Ajayesh adds- 
+            #this do hyperparameters tunning here we tune strength of the regularization(lambda or c) 
+            #and also class weights in case of we also use training data
 
+            #input:- all_embeddings:embeddings extracted from feature extracter of resnet50 bascically input to last layer
+            #        all_y:class labels for ex 0 for landbird and 1 for waterbird
+            #        all_g: group label ex landbird on land or waterbird on land and so on(calculated in wb_data.py)
+            #        preprocess: flag for weather to standardize embedding to have zero mean and unit standard deviation
+            #        balance_val: flag for weather to balance validation data ie to take all of the minority group and take the same size
+            #        from other groups and combining them.
+            #        add_train: flag for weather to use training data as well (we also tune for class weights in this case)
+            #        num_retrain: how many time we retrain last layer
+            #output:- best_hypers: the hyperpameters that gave best accuracy on worst group [c(strenght of regularization term),weightclass1, weightclass2]
+
+            
         worst_accs = {}
         for i in range(num_retrains):
             x_val = all_embeddings["val"]
             y_val = all_y["val"]
             g_val = all_g["val"]
             n_groups = np.max(g_val) + 1
-
+            # taking one half of validation data for hyperparameter tunning
             n_val = len(x_val) // 2
             idx = np.arange(len(x_val))
             np.random.shuffle(idx)
@@ -84,12 +98,13 @@ if __name__ == '__main__':
             x_valtrain = x_val[idx[n_val:]]
             y_valtrain = y_val[idx[n_val:]]
             g_valtrain = g_val[idx[n_val:]]
-
+            #getting the minority group
             n_groups = np.max(g_valtrain) + 1
             g_idx = [np.where(g_valtrain == g)[0] for g in range(n_groups)]
             min_g = np.min([len(g) for g in g_idx])
             for g in g_idx:
                 np.random.shuffle(g)
+            # balancing the groups if balance_val is set to true
             if balance_val:
                 x_valtrain = np.concatenate([x_valtrain[g[:min_g]] for g in g_idx])
                 y_valtrain = np.concatenate([y_valtrain[g[:min_g]] for g in g_idx])
@@ -98,7 +113,8 @@ if __name__ == '__main__':
             x_val = x_val[idx[:n_val]]
             y_val = y_val[idx[:n_val]]
             g_val = g_val[idx[:n_val]]
-
+            #adding training data if add_train is true 
+            #note we are only taking training data equal to size of valdation data and concatinating them along with labels and group
             n_train = len(x_valtrain) if add_train else 0
 
             x_train = np.concatenate([all_embeddings["train"][:n_train], x_valtrain])
@@ -109,12 +125,15 @@ if __name__ == '__main__':
                 scaler = StandardScaler()
                 x_train = scaler.fit_transform(x_train)
                 x_val = scaler.transform(x_val)
-
+            
 
             if balance_val and not add_train:
                 cls_w_options = [{0: 1., 1: 1.}]
             else:
                 cls_w_options = CLASS_WEIGHT_OPTIONS
+            # doing logistion regression for different value of c 
+            # we calculate accuracy on different groups,save the worst one over current hyperparameter(we save sum of worst group acuracy 
+            # if doing for more then one iteration
             for c in C_OPTIONS:
                 for class_weight in cls_w_options:
                     logreg = LogisticRegression(penalty=REG, C=c, solver="liblinear",
@@ -131,6 +150,7 @@ if __name__ == '__main__':
                         worst_accs[c, class_weight[0], class_weight[1]] += worst_acc
                     # print(c, class_weight[0], class_weight[1], worst_acc, worst_accs[c, class_weight[0], class_weight[1]])
         ks, vs = list(worst_accs.keys()), list(worst_accs.values())
+        # the best hyperparameter that gave best worst group accuarcy
         best_hypers = ks[np.argmax(vs)]
         return best_hypers
 
