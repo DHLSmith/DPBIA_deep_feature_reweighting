@@ -90,7 +90,7 @@ if __name__ == '__main__':
             y_val = all_y["val"]
             g_val = all_g["val"]
             n_groups = np.max(g_val) + 1
-            # taking one half of validation data for hyperparameter tunning
+            # taking one half of validation data for hyperparameter tuning
             n_val = len(x_val) // 2
             idx = np.arange(len(x_val))
             np.random.shuffle(idx)
@@ -120,7 +120,7 @@ if __name__ == '__main__':
             x_train = np.concatenate([all_embeddings["train"][:n_train], x_valtrain])
             y_train = np.concatenate([all_y["train"][:n_train], y_valtrain])
             g_train = np.concatenate([all_g["train"][:n_train], g_valtrain])
-            print(np.bincount(g_train))
+            print(f"bin counts for g_train: {np.bincount(g_train)}")
             if preprocess:
                 scaler = StandardScaler()
                 x_train = scaler.fit_transform(x_train)
@@ -128,11 +128,11 @@ if __name__ == '__main__':
             
 
             if balance_val and not add_train:
-                cls_w_options = [{0: 1., 1: 1.}]
+                cls_w_options = [{0: 1., 1: 1.}]  # fix class weights as 1 for both classes
             else:
                 cls_w_options = CLASS_WEIGHT_OPTIONS
-            # doing logistion regression for different value of c 
-            # we calculate accuracy on different groups,save the worst one over current hyperparameter(we save sum of worst group acuracy 
+            # doing logistic regression for different value of c
+            # we calculate accuracy on different groups,save the worst one over current hyperparameter(we save sum of worst group accuracy
             # if doing for more then one iteration
             for c in C_OPTIONS:
                 for class_weight in cls_w_options:
@@ -200,7 +200,7 @@ if __name__ == '__main__':
                 [all_embeddings["train"][train_idx], x_val])
             y_train = np.concatenate([all_y["train"][train_idx], y_val])
             g_train = np.concatenate([all_g["train"][train_idx], g_val])
-            print(np.bincount(g_train))
+            print(f"bin counts of g_train {np.bincount(g_train)}")
             if preprocess:
                 x_train = scaler.transform(x_train)
 
@@ -213,7 +213,7 @@ if __name__ == '__main__':
         x_test = all_embeddings["test"]
         y_test = all_y["test"]
         g_test = all_g["test"]
-        print(np.bincount(g_test)) #no of data points in each group
+        print(f"bin counts of g_test: {np.bincount(g_test)}") #no of data points in each group
 
         if preprocess:
             x_test = scaler.transform(x_test)
@@ -234,7 +234,7 @@ if __name__ == '__main__':
                       for g in range(n_groups)]
         return test_accs, test_mean_acc, train_accs
 
-        #these both are doing hyper parameter tunning and evaluation with trainning data these make add_train flag in previous function redundent
+        #these both are doing hyper parameter tuning and evaluation with training data these make add_train flag in previous function redundent
     def dfr_train_subset_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             learn_class_weights=False):
@@ -259,7 +259,7 @@ if __name__ == '__main__':
         x_train = np.concatenate([x_train[g[:min_g]] for g in g_idx])
         y_train = np.concatenate([y_train[g[:min_g]] for g in g_idx])
         g_train = np.concatenate([g_train[g[:min_g]] for g in g_idx])
-        print(np.bincount(g_train))
+        print(f"bin counts for g_train: {np.bincount(g_train)}")
         if preprocess:
             x_train = scaler.transform(x_train)
             x_val = scaler.transform(x_val)
@@ -279,7 +279,7 @@ if __name__ == '__main__':
                     [(preds_val == y_val)[g_val == g].mean() for g in range(n_groups)])
                 worst_acc = np.min(group_accs)
                 worst_accs[c, class_weight[0], class_weight[1]] = worst_acc
-                print(c, class_weight, worst_acc, group_accs)
+                print(f"{c=}, {class_weight=}, {worst_acc=}, {group_accs=}")
 
         ks, vs = list(worst_accs.keys()), list(worst_accs.values())
         best_hypers = ks[np.argmax(vs)]
@@ -308,7 +308,7 @@ if __name__ == '__main__':
             x_train = np.concatenate([x_train[g[:min_g]] for g in g_idx])
             y_train = np.concatenate([y_train[g[:min_g]] for g in g_idx])
             g_train = np.concatenate([g_train[g[:min_g]] for g in g_idx])
-            print(np.bincount(g_train))
+            print(f"bin counts for g_train: {np.bincount(g_train)}")
 
             if preprocess:
                 x_train = scaler.transform(x_train)
@@ -352,11 +352,13 @@ if __name__ == '__main__':
                                         train=True, augment_data=False)
     test_transform = get_transform_cub(target_resolution=target_resolution,
                                        train=False, augment_data=False)
-
+    print("# load trainset")
     trainset = WaterBirdsDataset(
         basedir=args.data_dir, split="train", transform=train_transform)
+    print("# load testset")
     testset = WaterBirdsDataset(
         basedir=args.data_dir, split="test", transform=test_transform)
+    print("# load valset")
     valset = WaterBirdsDataset(
         basedir=args.data_dir, split="val", transform=test_transform)
 
@@ -376,10 +378,10 @@ if __name__ == '__main__':
     # Load model
     print("# Load model")
     n_classes = trainset.n_classes
-    model = torchvision.models.resnet50(pretrained=False)
+    model = torchvision.models.resnet50(pretrained=False)  # define model without pretraining
     d = model.fc.in_features
-    model.fc = torch.nn.Linear(d, n_classes)
-    model.load_state_dict(torch.load(
+    model.fc = torch.nn.Linear(d, n_classes)  # replace fc layer with one suitable for our number of classes
+    model.load_state_dict(torch.load(  # bring in the checkpoint image
         args.ckpt_path
     ))
     model.cuda()
@@ -387,14 +389,13 @@ if __name__ == '__main__':
 
     # Evaluate model
     #evaluation on base model(ERM)
-    print("Base Model")
+    print("\nBase Model")
     base_model_results = {}
     get_yp_func = partial(get_y_p, n_places=trainset.n_places)
     base_model_results["test"] = evaluate(model, test_loader, get_yp_func)
     base_model_results["val"] = evaluate(model, val_loader, get_yp_func)
     base_model_results["train"] = evaluate(model, train_loader, get_yp_func)
-    print(base_model_results)
-    print()
+    print(f"\n{base_model_results=}\n")
 
     model.eval()
 
@@ -422,7 +423,7 @@ if __name__ == '__main__':
         all_y[name], all_p[name], all_g[name] = [], [], []
         for x, y, g, p in tqdm.tqdm(loader):
             with torch.no_grad():
-                all_embeddings[name].append(get_embed(model, x.cuda()).detach().cpu().numpy())
+                all_embeddings[name].append(get_embed(model, x.cuda()).detach().cpu().numpy())  # for all 100 x inputs in the batch, capture the 2048 neuron activations of the flattened layer before the fc layer
                 all_y[name].append(y.detach().cpu().numpy())
                 all_g[name].append(g.detach().cpu().numpy())
                 all_p[name].append(p.detach().cpu().numpy())
@@ -433,13 +434,15 @@ if __name__ == '__main__':
 
 
     # DFR on validation
-    print("DFR on validation")
+    # relates to DFR^Val_Tr
+    print("DFR on validation TUNE")
     dfr_val_results = {}
     c, w1, w2 = dfr_on_validation_tune(
         all_embeddings, all_y, all_g,
-        balance_val=args.balance_dfr_val, add_train=not args.notrain_dfr_val)
+        balance_val=args.balance_dfr_val, add_train=not args.notrain_dfr_val)  # NB args.notrain_dfr_val defaults True, then is inverted here so that add_train defaults False
     dfr_val_results["best_hypers"] = (c, w1, w2)
     print("Hypers:", (c, w1, w2))
+    print("DFR on validation EVAL")
     test_accs, test_mean_acc, train_accs = dfr_on_validation_eval(
             c, w1, w2, all_embeddings, all_y, all_g,
         balance_val=args.balance_dfr_val, add_train=not args.notrain_dfr_val)
@@ -447,10 +450,10 @@ if __name__ == '__main__':
     dfr_val_results["train_accs"] = train_accs
     dfr_val_results["test_worst_acc"] = np.min(test_accs)
     dfr_val_results["test_mean_acc"] = test_mean_acc
-    print(dfr_val_results)
-    print()
+    print(f"\n{dfr_val_results=}\n")
 
     # DFR on train subsampled
+    # relates to DFR^Tr_Tr
     print("DFR on train subsampled")
     dfr_train_results = {}
     c, w1, w2 = dfr_train_subset_tune(
@@ -464,15 +467,15 @@ if __name__ == '__main__':
     dfr_train_results["train_accs"] = train_accs
     dfr_train_results["test_worst_acc"] = np.min(test_accs)
     dfr_train_results["test_mean_acc"] = test_mean_acc
-    print(dfr_train_results)
-    print()
+    print(f"\n{dfr_train_results=}\n")
+
 
 
     all_results = {}
     all_results["base_model_results"] = base_model_results
     all_results["dfr_val_results"] = dfr_val_results
     all_results["dfr_train_results"] = dfr_train_results
-    print(all_results)
+    print(f"{all_results=}")
 
     with open(os.path.join(args.output_dir, 'results.pkl'), 'wb') as f:
         pickle.dump(all_results, f)
