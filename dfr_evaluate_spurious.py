@@ -238,7 +238,7 @@ if __name__ == '__main__':
     def dfr_train_subset_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             learn_class_weights=False):
-
+        print("dfr train subset_tune")
         x_val = all_embeddings["val"]
         y_val = all_y["val"]
         g_val = all_g["val"]
@@ -289,6 +289,7 @@ if __name__ == '__main__':
     def dfr_train_subset_eval(
             c, w1, w2, all_embeddings, all_y, all_g, num_retrains=10,
             preprocess=True):
+        print("dfr train subset eval")
         coefs, intercepts = [], []
         x_train = all_embeddings["train"]
         scaler = StandardScaler()
@@ -373,6 +374,7 @@ if __name__ == '__main__':
         **loader_kwargs)
 
     # Load model
+    print("# Load model")
     n_classes = trainset.n_classes
     model = torchvision.models.resnet50(pretrained=False)
     d = model.fc.in_features
