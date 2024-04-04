@@ -66,6 +66,8 @@ if __name__ == '__main__':
     print('Preparing directory %s' % args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
 
+    logger = Logger(os.path.join(args.output_dir, 'dfr_log.txt'))
+
     def dfr_on_validation_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             balance_val=False, add_train=True, num_retrains=1):
@@ -120,7 +122,7 @@ if __name__ == '__main__':
             x_train = np.concatenate([all_embeddings["train"][:n_train], x_valtrain])
             y_train = np.concatenate([all_y["train"][:n_train], y_valtrain])
             g_train = np.concatenate([all_g["train"][:n_train], g_valtrain])
-            print(f"bin counts for g_train: {np.bincount(g_train)}")
+            logger.write(f"bin counts for g_train: {np.bincount(g_train)}\n")
             if preprocess:
                 scaler = StandardScaler()
                 x_train = scaler.fit_transform(x_train)
@@ -200,7 +202,7 @@ if __name__ == '__main__':
                 [all_embeddings["train"][train_idx], x_val])
             y_train = np.concatenate([all_y["train"][train_idx], y_val])
             g_train = np.concatenate([all_g["train"][train_idx], g_val])
-            print(f"bin counts of g_train {np.bincount(g_train)}")
+            logger.write(f"bin counts of g_train {np.bincount(g_train)}\n")
             if preprocess:
                 x_train = scaler.transform(x_train)
 
@@ -213,7 +215,7 @@ if __name__ == '__main__':
         x_test = all_embeddings["test"]
         y_test = all_y["test"]
         g_test = all_g["test"]
-        print(f"bin counts of g_test: {np.bincount(g_test)}") #no of data points in each group
+        logger.write(f"bin counts of g_test: {np.bincount(g_test)}\n") #no of data points in each group
 
         if preprocess:
             x_test = scaler.transform(x_test)
@@ -238,7 +240,7 @@ if __name__ == '__main__':
     def dfr_train_subset_tune(
             all_embeddings, all_y, all_g, preprocess=True,
             learn_class_weights=False):
-        print("dfr train subset_tune")
+        logger.write("dfr train subset_tune\n")
         x_val = all_embeddings["val"]
         y_val = all_y["val"]
         g_val = all_g["val"]
@@ -259,7 +261,7 @@ if __name__ == '__main__':
         x_train = np.concatenate([x_train[g[:min_g]] for g in g_idx])
         y_train = np.concatenate([y_train[g[:min_g]] for g in g_idx])
         g_train = np.concatenate([g_train[g[:min_g]] for g in g_idx])
-        print(f"bin counts for g_train: {np.bincount(g_train)}")
+        logger.write(f"bin counts for g_train: {np.bincount(g_train)}\n")
         if preprocess:
             x_train = scaler.transform(x_train)
             x_val = scaler.transform(x_val)
@@ -279,7 +281,7 @@ if __name__ == '__main__':
                     [(preds_val == y_val)[g_val == g].mean() for g in range(n_groups)])
                 worst_acc = np.min(group_accs)
                 worst_accs[c, class_weight[0], class_weight[1]] = worst_acc
-                print(f"{c=}, {class_weight=}, {worst_acc=}, {group_accs=}")
+                logger.write(f"{c=}, {class_weight=}, {worst_acc=}, {group_accs=}\n")
 
         ks, vs = list(worst_accs.keys()), list(worst_accs.values())
         best_hypers = ks[np.argmax(vs)]
@@ -289,7 +291,7 @@ if __name__ == '__main__':
     def dfr_train_subset_eval(
             c, w1, w2, all_embeddings, all_y, all_g, num_retrains=10,
             preprocess=True):
-        print("dfr train subset eval")
+        logger.write("dfr train subset eval\n")
         coefs, intercepts = [], []
         x_train = all_embeddings["train"]
         scaler = StandardScaler()
@@ -308,7 +310,7 @@ if __name__ == '__main__':
             x_train = np.concatenate([x_train[g[:min_g]] for g in g_idx])
             y_train = np.concatenate([y_train[g[:min_g]] for g in g_idx])
             g_train = np.concatenate([g_train[g[:min_g]] for g in g_idx])
-            print(f"bin counts for g_train: {np.bincount(g_train)}")
+            logger.write(f"bin counts for g_train: {np.bincount(g_train)}\n")
 
             if preprocess:
                 x_train = scaler.transform(x_train)
@@ -352,13 +354,13 @@ if __name__ == '__main__':
                                         train=True, augment_data=False)
     test_transform = get_transform_cub(target_resolution=target_resolution,
                                        train=False, augment_data=False)
-    print("# load trainset")
+    logger.write("# load trainset\n")
     trainset = WaterBirdsDataset(
         basedir=args.data_dir, split="train", transform=train_transform)
-    print("# load testset")
+    logger.write("# load testset\n")
     testset = WaterBirdsDataset(
         basedir=args.data_dir, split="test", transform=test_transform)
-    print("# load valset")
+    logger.write("# load valset\n")
     valset = WaterBirdsDataset(
         basedir=args.data_dir, split="val", transform=test_transform)
 
@@ -376,7 +378,7 @@ if __name__ == '__main__':
         **loader_kwargs)
 
     # Load model
-    print("# Load model")
+    logger.write("# Load model\n")
     n_classes = trainset.n_classes
     model = torchvision.models.resnet50(pretrained=False)  # define model without pretraining
     d = model.fc.in_features
@@ -389,13 +391,13 @@ if __name__ == '__main__':
 
     # Evaluate model
     #evaluation on base model(ERM)
-    print("\nBase Model")
+    logger.write("\nBase Model\n")
     base_model_results = {}
     get_yp_func = partial(get_y_p, n_places=trainset.n_places)
     base_model_results["test"] = evaluate(model, test_loader, get_yp_func)
     base_model_results["val"] = evaluate(model, val_loader, get_yp_func)
     base_model_results["train"] = evaluate(model, train_loader, get_yp_func)
-    print(f"\n{base_model_results=}\n")
+    logger.write(f"\n{base_model_results=}\n")
 
     model.eval()
 
@@ -435,14 +437,14 @@ if __name__ == '__main__':
 
     # DFR on validation
     # relates to DFR^Val_Tr
-    print("DFR on validation TUNE")
+    logger.write("DFR on validation TUNE\n")
     dfr_val_results = {}
     c, w1, w2 = dfr_on_validation_tune(
         all_embeddings, all_y, all_g,
         balance_val=args.balance_dfr_val, add_train=not args.notrain_dfr_val)  # NB args.notrain_dfr_val defaults True, then is inverted here so that add_train defaults False
     dfr_val_results["best_hypers"] = (c, w1, w2)
-    print("Hypers:", (c, w1, w2))
-    print("DFR on validation EVAL")
+    logger.write(f"Hypers: ({c=}, {w1=}, {w2=})\n")
+    logger.write("DFR on validation EVAL\n")
     test_accs, test_mean_acc, train_accs = dfr_on_validation_eval(
             c, w1, w2, all_embeddings, all_y, all_g,
         balance_val=args.balance_dfr_val, add_train=not args.notrain_dfr_val)
@@ -450,24 +452,24 @@ if __name__ == '__main__':
     dfr_val_results["train_accs"] = train_accs
     dfr_val_results["test_worst_acc"] = np.min(test_accs)
     dfr_val_results["test_mean_acc"] = test_mean_acc
-    print(f"\n{dfr_val_results=}\n")
+    logger.write(f"\n{dfr_val_results=}\n")
 
     # DFR on train subsampled
     # relates to DFR^Tr_Tr
-    print("DFR on train subsampled")
+    logger.write("DFR on train subsampled\n")
     dfr_train_results = {}
     c, w1, w2 = dfr_train_subset_tune(
         all_embeddings, all_y, all_g,
         learn_class_weights=args.tune_class_weights_dfr_train)
     dfr_train_results["best_hypers"] = (c, w1, w2)
-    print("Hypers:", (c, w1, w2))
+    logger.write(f"Hypers: ({c=}, {w1=}, {w2=})\n")
     test_accs, test_mean_acc, train_accs = dfr_train_subset_eval(
             c, w1, w2, all_embeddings, all_y, all_g)
     dfr_train_results["test_accs"] = test_accs
     dfr_train_results["train_accs"] = train_accs
     dfr_train_results["test_worst_acc"] = np.min(test_accs)
     dfr_train_results["test_mean_acc"] = test_mean_acc
-    print(f"\n{dfr_train_results=}\n")
+    logger.write(f"\n{dfr_train_results=}\n")
 
 
 
@@ -475,7 +477,7 @@ if __name__ == '__main__':
     all_results["base_model_results"] = base_model_results
     all_results["dfr_val_results"] = dfr_val_results
     all_results["dfr_train_results"] = dfr_train_results
-    print(f"{all_results=}")
+    logger.write(f"{all_results=}\n")
 
     with open(os.path.join(args.output_dir, 'results.pkl'), 'wb') as f:
         pickle.dump(all_results, f)
