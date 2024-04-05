@@ -66,6 +66,13 @@ if __name__ == '__main__':
     print('Preparing directory %s' % args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
 
+    # record how the command was run.
+    with open(os.path.join(args.output_dir, 'command.sh'), 'w') as f:
+        f.write(' '.join(sys.argv))
+        f.write('\n')
+    with open(os.path.join(args.output_dir, 'args.json'), 'w') as f:
+        args_json = json.dumps(vars(args))
+        f.write(args_json)
     logger = Logger(os.path.join(args.output_dir, 'dfr_log.txt'))
 
     def dfr_on_validation_tune(
