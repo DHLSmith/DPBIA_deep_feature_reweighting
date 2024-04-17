@@ -1,6 +1,6 @@
 
 *.pyc
-/RSLTS/
-/RSLTS_DFR/
+/results/RSLTS/
+/results/RSLTS_DFR/
 /CKPT_DFR/
 /evidence/~$test_results.xlsx

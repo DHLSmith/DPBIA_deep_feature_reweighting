@@ -1,1 +1,0 @@
-C:\deep_learning_project\DPBIA_deep_feature_reweighting\train_classifier.py --output_dir=CELEBA_RSLTS_TC --pretrained_model --num_epochs=39 --weight_decay=1e-4 --batch_size=64 --init_lr=1e-3 --eval_freq=1 --data_dir=../data/celebA/ --test_wb_dir=../data/celebA/ --augment_data --seed=16 --resume=CELEBA_RSLTS_TC_2024-04-05_151451/tmp_checkpoint.pt

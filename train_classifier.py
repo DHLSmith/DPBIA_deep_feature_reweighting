@@ -10,7 +10,6 @@ import sys
 from collections import defaultdict
 import json
 from functools import partial
-
 from wb_data import WaterBirdsDataset, get_loader, get_transform_cub, log_data
 
 from utils import MultiTaskHead
@@ -79,6 +78,7 @@ if __name__ == '__main__':
     # Damian Added: This will append a timestamp to results folder so that we don't overwrite, and to help keep track
     date_time = datetime.now().strftime("_%Y-%m-%d_%H%M%S")
     args.output_dir += date_time
+    args.output_dir = os.path.join("results", args.output_dir)
     print('Preparing directory %s' % args.output_dir)
 
     # make output folder and begin logging
@@ -131,7 +131,6 @@ if __name__ == '__main__':
         logger.write(f"Initial groups {np.bincount(trainset.group_array)}\n")
         group_counts = trainset.group_counts
         minority_groups = np.argsort(group_counts.numpy())[:args.num_minority_groups_remove]
-        minority_groups
         idx = np.where(np.logical_and.reduce(
             [trainset.group_array != g for g in minority_groups], initial=True))[0]
         trainset.y_array = trainset.y_array[idx]
@@ -209,6 +208,7 @@ if __name__ == '__main__':
 
             optimizer.zero_grad()
             logits = model(x)
+            print(logits.shape)
             if args.multitask:  # predicting groups and places
                 logits, logits_place = logits
                 loss = criterion(logits, y) + criterion(logits_place, p)

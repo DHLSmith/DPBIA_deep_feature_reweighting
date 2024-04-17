@@ -1,0 +1,1 @@
+{"data_dir": "../data/celebA/", "ckpt_path": "CELEBA_RSLTS_TC_2024-04-05_195615/final_checkpoint.pt", "batch_size": 100, "balance_dfr_val": true, "notrain_dfr_val": true, "tune_class_weights_dfr_train": true, "output_dir": "CELEBA_RSLTS_DFR_2024-04-06_131241"}

@@ -1,1 +1,0 @@
-C:\deep_learning_project\DPBIA_deep_feature_reweighting\train_classifier.py --output_dir=RSLTS --pretrained_model --num_epochs=100 --weight_decay=1e-3 --batch_size=32 --init_lr=1e-3 --eval_freq=1 --data_dir=../data/waterbird_complete95_forest2water2/ --test_wb_dir=../data/waterbird_complete95_forest2water2/ --augment_data --seed=42

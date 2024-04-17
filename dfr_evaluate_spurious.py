@@ -63,6 +63,7 @@ if __name__ == '__main__':
 
     date_time = datetime.now().strftime("_%Y-%m-%d_%H%M%S")
     args.output_dir += date_time
+    args.output_dir = os.path.join("results", args.output_dir)
     print('Preparing directory %s' % args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
 

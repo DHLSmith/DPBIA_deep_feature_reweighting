@@ -1,0 +1,1 @@
+C:\deep_learning_project\DPBIA_deep_feature_reweighting\dfr_evaluate_spurious.py --data_dir=../data/celebA/ --output_dir=CELEBA_RSLTS_DFR --ckpt_path=CELEBA_RSLTS_TC_2024-04-05_195615/final_checkpoint.pt --tune_class_weights_dfr_train
